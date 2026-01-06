@@ -15,7 +15,9 @@ def init_db():
             confidence REAL NOT NULL,
             primary_signal TEXT NOT NULL,
             secondary_signal TEXT,
-            explanation TEXT NOT NULL
+            explanation TEXT NOT NULL,
+            dead_event_ratio REAL,
+            dead_event_confidence REAL
         );
     """)
 

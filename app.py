@@ -29,7 +29,9 @@ def run_analysis():
         confidence=confidence,
         primary_signal="retry_pressure",
         secondary_signal=None,
-        explanation=explanation
+        explanation=explanation,
+        dead_event_ratio=metrics.get("dead_event_ratio") if metrics else None,
+        dead_event_confidence=metrics.get("dead_event_confidence") if metrics else None
     )
 
     print("\nOperational Drift Analysis")

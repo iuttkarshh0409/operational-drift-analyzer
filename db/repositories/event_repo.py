@@ -73,3 +73,34 @@ def fetch_failed_events(start_date, end_date):
     conn.close()
 
     return rows
+
+def fetch_dead_event_count(start_ts, end_ts):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM event_detected
+        WHERE sync_status = 'DEAD'
+        AND detected_at BETWEEN datetime(?) AND datetime(?)
+    """, (start_ts, end_ts))
+
+    count = cursor.fetchone()[0]
+    conn.close()
+    return count
+
+
+def fetch_total_event_count(start_ts, end_ts):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM event_detected
+        WHERE detected_at BETWEEN datetime(?) AND datetime(?)
+    """, (start_ts, end_ts))
+
+    count = cursor.fetchone()[0]
+    conn.close()
+    return count
+

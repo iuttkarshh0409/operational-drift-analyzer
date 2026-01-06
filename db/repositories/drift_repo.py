@@ -2,37 +2,46 @@
 from db.connection import get_connection
 from datetime import datetime, timezone
 
+
 def save_drift_snapshot(
     window_days,
     risk_level,
     confidence,
     primary_signal,
     secondary_signal,
-    explanation
+    explanation,
+    dead_event_ratio,
+    dead_event_confidence
 ):
     conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
-        INSERT INTO drift_snapshots (
-            window_days,
-            analyzed_at,
-            risk_level,
-            confidence,
-            primary_signal,
-            secondary_signal,
-            explanation
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (
+    INSERT INTO drift_snapshots (
         window_days,
-        datetime.now(timezone.utc).date(),
+        analyzed_at,
         risk_level,
         confidence,
         primary_signal,
         secondary_signal,
-        explanation
-    ))
+        explanation,
+        dead_event_ratio,
+        dead_event_confidence
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+""", (
+    window_days,
+    datetime.now(timezone.utc).isoformat(),
+    risk_level,
+    confidence,
+    primary_signal,
+    secondary_signal,
+    explanation,
+    dead_event_ratio,
+    dead_event_confidence
+))
+
+
 
     conn.commit()
     conn.close()
@@ -49,7 +58,9 @@ def fetch_latest_snapshot():
             confidence,
             primary_signal,
             secondary_signal,
-            explanation
+            explanation,
+            dead_event_ratio,
+            dead_event_confidence
         FROM drift_snapshots
         ORDER BY analyzed_at DESC
         LIMIT 1
@@ -69,4 +80,6 @@ def fetch_latest_snapshot():
         "primary_signal": row[4],
         "secondary_signal": row[5],
         "explanation": row[6],
+        "dead_event_ratio": row[7],
+        "dead_event_confidence": row[8]
     }
