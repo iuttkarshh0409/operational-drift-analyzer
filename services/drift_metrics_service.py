@@ -1,19 +1,21 @@
 # services/drift_metrics_service.py
 from datetime import datetime, timedelta, timezone
-
 from db.repositories.event_repo import (
     fetch_retry_counts,
     fetch_dead_event_count,
     fetch_total_event_count
 )
 
-
 # ==========================================================
 # Signal 1: Retry Pressure
 # ==========================================================
 def calculate_retry_pressure(window_days=7):
-    now = datetime.now(timezone.utc)
+    """
+    Measures change in retry behavior between a baseline window
+    and a recent window of equal size.
+    """
 
+    now = datetime.now(timezone.utc)
     recent_start = now - timedelta(days=window_days)
     baseline_start = recent_start - timedelta(days=window_days)
 
@@ -27,7 +29,9 @@ def calculate_retry_pressure(window_days=7):
         now.isoformat()
     )
 
-    # -------- CASE 1: Absolutely no usable data --------
+    # --------------------------------------------------
+    # CASE 1: Absolutely no usable data
+    # --------------------------------------------------
     if not baseline_retries and not recent_retries:
         return {
             "status": "UNKNOWN",
@@ -37,14 +41,16 @@ def calculate_retry_pressure(window_days=7):
             "confidence": 0.0
         }
 
-    # -------- CASE 2: System warming up (no baseline yet) --------
+    # --------------------------------------------------
+    # CASE 2: System warming up (no baseline yet)
+    # --------------------------------------------------
     if not baseline_retries:
         recent_avg = (
             round(sum(recent_retries) / len(recent_retries), 2)
-            if recent_retries else 0
+            if recent_retries else 0.0
         )
 
-        confidence = min(len(recent_retries), window_days) / window_days
+        confidence = min(len(recent_retries) / window_days, 1.0)
 
         return {
             "status": "WARMUP",
@@ -54,17 +60,21 @@ def calculate_retry_pressure(window_days=7):
             "confidence": round(confidence, 2)
         }
 
-    # -------- CASE 3: Valid comparison --------
+    # --------------------------------------------------
+    # CASE 3: Valid comparison (happy path)
+    # --------------------------------------------------
     baseline_avg = sum(baseline_retries) / len(baseline_retries)
-    recent_avg = sum(recent_retries) / len(recent_retries) if recent_retries else 0
+    recent_avg = (
+        sum(recent_retries) / len(recent_retries)
+        if recent_retries else 0.0
+    )
 
     delta = recent_avg - baseline_avg
 
     confidence = min(
-        len(baseline_retries),
-        len(recent_retries),
-        window_days
-    ) / window_days
+        min(len(baseline_retries), len(recent_retries)) / window_days,
+        1.0
+    )
 
     return {
         "status": "OK",
@@ -78,7 +88,12 @@ def calculate_retry_pressure(window_days=7):
 # ==========================================================
 # Signal 2: Dead Event Ratio
 # ==========================================================
-def calculate_dead_event_ratio(window_days=7, min_events=20):
+def calculate_dead_event_ratio(window_days=7, min_events=5):
+    """
+    Measures proportion of DEAD events in the given window.
+    This is a terminal-failure health indicator.
+    """
+
     now = datetime.now(timezone.utc)
     start = now - timedelta(days=window_days)
 
@@ -92,6 +107,9 @@ def calculate_dead_event_ratio(window_days=7, min_events=20):
         now.isoformat()
     )
 
+    # --------------------------------------------------
+    # Not enough data to make a claim
+    # --------------------------------------------------
     if total < min_events:
         return {
             "status": "UNKNOWN",
@@ -102,6 +120,8 @@ def calculate_dead_event_ratio(window_days=7, min_events=20):
         }
 
     ratio = dead / total
+
+    # Confidence grows with volume, capped
     confidence = min(total / (min_events * 2), 1.0)
 
     return {

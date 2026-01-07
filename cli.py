@@ -12,31 +12,53 @@ def show_latest():
         print("No drift analysis found.")
         return
 
-    print("\nOperational Drift Snapshot")
-    print("-" * 30)
+    print("\nOperational Drift — Summary")
+    print("-" * 50)
 
-    print(f"Analyzed at : {snapshot['analyzed_at']}")
-    print(f"Window     : {snapshot['window_days']} days")
-    print(f"Risk level : {snapshot['risk_level']}")
-    print(f"Confidence : {snapshot['confidence']}")
-    print(f"Signal     : {snapshot['primary_signal']}")
+    print(f"Window                : {snapshot['window_days']} days")
+    print(f"Analyzed at           : {snapshot['analyzed_at']}")
+
+    # --------------------------------------------------
+    # Retry Behavior
+    # --------------------------------------------------
+    print("\nRetry Behavior")
+    print("-" * 50)
+
+    print(f"Primary signal        : {snapshot['primary_signal']}")
 
     if snapshot.get("secondary_signal"):
-        print(f"Secondary  : {snapshot['secondary_signal']}")
+        print(f"Secondary signal      : {snapshot['secondary_signal']}")
 
-    # ---------- NEW: Dead Event Ratio visibility ----------
-    dead_ratio = snapshot.get("dead_event_ratio")
-    dead_conf = snapshot.get("dead_event_confidence")
+    # --------------------------------------------------
+    # Dead Events
+    # --------------------------------------------------
+    print("\nDead Events")
+    print("-" * 50)
 
-    if dead_ratio is None:
-        print("Dead Event Ratio : UNKNOWN (insufficient data)")
+    # IMPORTANT:
+    # None = not enough data
+    # 0.0   = valid computed value
+    if snapshot["dead_event_ratio"] is None:
+        print("Dead event ratio      : Not enough data")
     else:
-        print(
-            f"Dead Event Ratio : {round(dead_ratio * 100, 2)}% "
-            f"(confidence: {dead_conf})"
-        )
+        print(f"Dead event ratio      : {snapshot['dead_event_ratio']}")
+        print(f"Dead confidence       : {snapshot['dead_event_confidence']}")
 
-    print(f"\nExplanation:\n{snapshot['explanation']}")
+    # --------------------------------------------------
+    # Assessment
+    # --------------------------------------------------
+    print("\nAssessment")
+    print("-" * 50)
+
+    print(f"Risk level            : {snapshot['risk_level']}")
+    print(f"Confidence            : {snapshot['confidence']}")
+
+    # --------------------------------------------------
+    # Interpretation
+    # --------------------------------------------------
+    print("\nInterpretation")
+    print("-" * 50)
+    print(snapshot["explanation"])
 
 
 def main():
@@ -55,7 +77,6 @@ def main():
         action="store_true",
         help="Show latest drift snapshot"
     )
-
 
     args = parser.parse_args()
 
